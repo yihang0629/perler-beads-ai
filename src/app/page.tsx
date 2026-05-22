@@ -63,6 +63,9 @@ function sortColorKeys(a: string, b: string): number {
   return a.localeCompare(b);
 }
 
+// 定义MARD 221色默认色板包含的颜色前缀
+const DEFAULT_MARD_221_PREFIXES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'M'];
+
 // --- Define available palette key sets ---
 // 从colorSystemMapping.json获取所有MARD色号
 const mardToHexMapping = getMardToHexMapping();
@@ -79,6 +82,21 @@ const fullBeadPalette: PaletteColor[] = Object.entries(mardToHexMapping)
     return { key: hex, hex, rgb };
   })
   .filter((color): color is PaletteColor => color !== null);
+
+// 获取MARD 221色对应的hex值
+function getDefaultMard221HexValues(): string[] {
+  const hexValues: string[] = [];
+  Object.entries(mardToHexMapping).forEach(([mardKey, hex]) => {
+    const prefixMatch = mardKey.match(/^([A-Z]+)/);
+    if (prefixMatch) {
+      const prefix = prefixMatch[1];
+      if (DEFAULT_MARD_221_PREFIXES.includes(prefix)) {
+        hexValues.push(hex);
+      }
+    }
+  });
+  return hexValues;
+}
 
 // ++ Add definition for background color keys ++
 
@@ -101,8 +119,8 @@ import AIOptimizeModal from '../components/AIOptimizeModal';
 
 export default function Home() {
   const [originalImageSrc, setOriginalImageSrc] = useState<string | null>(null);
-  const [granularity, setGranularity] = useState<number>(50);
-  const [granularityInput, setGranularityInput] = useState<string>("50");
+  const [maxGridSize, setMaxGridSize] = useState<number>(64);
+  const [maxGridSizeInput, setMaxGridSizeInput] = useState<string>("64");
   const [similarityThreshold, setSimilarityThreshold] = useState<number>(30);
   const [similarityThresholdInput, setSimilarityThresholdInput] = useState<string>("30");
   // 添加像素化模式状态
@@ -131,6 +149,8 @@ export default function Home() {
   const [selectedColor, setSelectedColor] = useState<MappedPixel | null>(null);
   // 新增：一键擦除模式状态
   const [isEraseMode, setIsEraseMode] = useState<boolean>(false);
+  // 新增：自动取色模式状态
+  const [isAutoPickMode, setIsAutoPickMode] = useState<boolean>(false);
   // 新增状态变量：控制打赏弹窗
   const [isDonationModalOpen, setIsDonationModalOpen] = useState<boolean>(false);
   // 新增状态变量：控制教程弹窗
@@ -297,9 +317,9 @@ export default function Home() {
 
   // ++ 添加：当状态变化时同步更新输入框的值 ++
   useEffect(() => {
-    setGranularityInput(granularity.toString());
+    setMaxGridSizeInput(maxGridSize.toString());
     setSimilarityThresholdInput(similarityThreshold.toString());
-  }, [granularity, similarityThreshold]);
+  }, [maxGridSize, similarityThreshold]);
 
   // ++ Calculate unique colors currently on the grid for the palette ++
   const currentGridColors = useMemo(() => {
@@ -362,18 +382,20 @@ export default function Home() {
     setIsCustomPalette(true);
     } else {
         console.log('所有数据都无效，清除localStorage并重新初始化');
-        // 如果本地数据无效，清除localStorage并默认选择所有颜色
+        // 如果本地数据无效，清除localStorage并默认选择MARD 221色
         localStorage.removeItem('customPerlerPaletteSelections');
         const allHexValues = fullBeadPalette.map(color => color.hex.toUpperCase());
-        const initialSelections = presetToSelections(allHexValues, allHexValues);
+        const default221HexValues = getDefaultMard221HexValues();
+        const initialSelections = presetToSelections(allHexValues, default221HexValues);
       setCustomPaletteSelections(initialSelections);
       setIsCustomPalette(false);
     }
     } else {
-      console.log('没有localStorage数据，默认选择所有颜色');
-      // 如果没有保存的选择，默认选择所有颜色
+      console.log('没有localStorage数据，默认选择MARD 221色');
+      // 如果没有保存的选择，默认选择MARD 221色
       const allHexValues = fullBeadPalette.map(color => color.hex.toUpperCase());
-      const initialSelections = presetToSelections(allHexValues, allHexValues);
+      const default221HexValues = getDefaultMard221HexValues();
+      const initialSelections = presetToSelections(allHexValues, default221HexValues);
       setCustomPaletteSelections(initialSelections);
       setIsCustomPalette(false);
     }
@@ -604,9 +626,10 @@ export default function Home() {
           setSelectedColor(null);
           setIsEraseMode(false);
           
-          // 设置格子数量为导入的尺寸，避免重新映射时尺寸被修改
-          setGranularity(gridDimensions.N);
-          setGranularityInput(gridDimensions.N.toString());
+          // 设置最大尺寸为导入图纸的最大边，避免重新映射时尺寸被修改
+          const maxDimension = Math.max(gridDimensions.N, gridDimensions.M);
+          setMaxGridSize(maxDimension);
+          setMaxGridSizeInput(maxDimension.toString());
           
           alert(`成功导入CSV文件！图纸尺寸：${gridDimensions.N}x${gridDimensions.M}，共使用${Object.keys(colorCountsMap).length}种颜色。`);
         })
@@ -641,10 +664,10 @@ export default function Home() {
     setColorCounts(null);
     setTotalBeadCount(0);
     setInitialGridColorKeys(new Set()); // ++ 重置初始键 ++
-    // ++ 重置横轴格子数量为默认值 ++
-    const defaultGranularity = 60;
-    setGranularity(defaultGranularity);
-    setGranularityInput(defaultGranularity.toString());
+    // ++ 重置最大尺寸为默认值 ++
+    const defaultGridSize = 64;
+    setMaxGridSize(defaultGridSize);
+    setMaxGridSizeInput(defaultGridSize.toString());
     setRemapTrigger(prev => prev + 1); // Trigger full remap for new image
     
     // 关闭裁剪弹窗
@@ -719,9 +742,32 @@ export default function Home() {
     }
   };
 
+  // 处理自动取色模式切换
+  const handleAutoPickToggle = () => {
+    // 确保在手动上色模式下才能使用
+    if (!isManualColoringMode) {
+      return;
+    }
+    
+    // 如果当前在颜色替换模式，先退出替换模式
+    if (colorReplaceState.isActive) {
+      setColorReplaceState({
+        isActive: false,
+        step: 'select-source'
+      });
+      setHighlightColorKey(null);
+    }
+    
+    setIsAutoPickMode(!isAutoPickMode);
+    // 如果开启自动取色模式，取消选中的颜色
+    if (!isAutoPickMode) {
+      setSelectedColor(null);
+    }
+  };
+
   // ++ 新增：处理输入框变化的函数 ++
-  const handleGranularityInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setGranularityInput(event.target.value);
+  const handleMaxGridSizeInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setMaxGridSizeInput(event.target.value);
   };
 
   // ++ 添加：处理相似度输入框变化的函数 ++
@@ -731,15 +777,15 @@ export default function Home() {
 
   // ++ 修改：处理确认按钮点击的函数，同时处理两个参数 ++
   const handleConfirmParameters = () => {
-    // 处理格子数
-    const minGranularity = 10;
-    const maxGranularity = 300;
-    let newGranularity = parseInt(granularityInput, 10);
+    // 处理最大尺寸
+    const minGridSize = 16;
+    const maxGridSizeVal = 256;
+    let newGridSize = parseInt(maxGridSizeInput, 10);
 
-    if (isNaN(newGranularity) || newGranularity < minGranularity) {
-      newGranularity = minGranularity;
-    } else if (newGranularity > maxGranularity) {
-      newGranularity = maxGranularity;
+    if (isNaN(newGridSize) || newGridSize < minGridSize) {
+      newGridSize = minGridSize;
+    } else if (newGridSize > maxGridSizeVal) {
+      newGridSize = maxGridSizeVal;
     }
 
     // 处理相似度阈值
@@ -754,12 +800,12 @@ export default function Home() {
     }
 
     // 检查值是否有变化
-    const granularityChanged = newGranularity !== granularity;
+    const gridSizeChanged = newGridSize !== maxGridSize;
     const similarityChanged = newSimilarity !== similarityThreshold;
     
-    if (granularityChanged) {
-      console.log(`Confirming new granularity: ${newGranularity}`);
-      setGranularity(newGranularity);
+    if (gridSizeChanged) {
+      console.log(`Confirming new max grid size: ${newGridSize}`);
+      setMaxGridSize(newGridSize);
     }
     
     if (similarityChanged) {
@@ -768,7 +814,7 @@ export default function Home() {
     }
     
     // 只有在有值变化时才触发重映射
-    if (granularityChanged || similarityChanged) {
+    if (gridSizeChanged || similarityChanged) {
       setRemapTrigger(prev => prev + 1);
       // 退出手动上色模式
       setIsManualColoringMode(false);
@@ -776,7 +822,7 @@ export default function Home() {
     }
 
     // 始终同步输入框的值
-    setGranularityInput(newGranularity.toString());
+    setMaxGridSizeInput(newGridSize.toString());
     setSimilarityThresholdInput(newSimilarity.toString());
   };
 
@@ -836,9 +882,20 @@ export default function Home() {
     
     img.onload = () => {
       console.log("Image loaded successfully.");
-      const aspectRatio = img.height / img.width;
-      const N = detailLevel;
-      const M = Math.max(1, Math.round(N * aspectRatio));
+      const imgAspect = img.width / img.height; // 图片宽高比
+      let N: number, M: number;
+      
+      // 根据最大尺寸和图片比例计算网格尺寸
+      // 如果图片是横向的(宽高比>=1)，宽度=最大尺寸，高度按比例
+      // 如果图片是纵向的(宽高比<1)，高度=最大尺寸，宽度按比例
+      if (imgAspect >= 1) {
+        N = detailLevel;
+        M = Math.max(1, Math.round(detailLevel / imgAspect));
+      } else {
+        M = detailLevel;
+        N = Math.max(1, Math.round(detailLevel * imgAspect));
+      }
+      
       if (N <= 0 || M <= 0) { console.error("Invalid grid dimensions:", { N, M }); return; }
       console.log(`Grid size: ${N}x${M}`);
 
@@ -864,7 +921,7 @@ export default function Home() {
         console.log(`Large grid detected (${N} columns). Adjusted canvas width from ${baseWidth} to ${outputWidth}px (cell size: ${Math.round(outputWidth / N)}px)`);
       }
       
-      const outputHeight = Math.round(outputWidth * aspectRatio);
+      const outputHeight = Math.round(outputWidth / imgAspect);
       
       // 在控制台提示用户画布尺寸变化
       if (N > 100) {
@@ -1032,8 +1089,8 @@ export default function Home() {
     if (originalImageSrc && activeBeadPalette.length > 0) {
        const timeoutId = setTimeout(() => {
          if (originalImageSrc && originalCanvasRef.current && pixelatedCanvasRef.current && activeBeadPalette.length > 0) {
-           console.log("useEffect triggered: Processing image due to src, granularity, threshold, palette selection, mode or remap trigger.");
-           pixelateImage(originalImageSrc, granularity, similarityThreshold, activeBeadPalette, pixelationMode);
+           console.log("useEffect triggered: Processing image due to src, maxGridSize, threshold, palette selection, mode or remap trigger.");
+           pixelateImage(originalImageSrc, maxGridSize, similarityThreshold, activeBeadPalette, pixelationMode);
          } else {
             console.warn("useEffect check failed inside timeout: Refs or active palette not ready/empty.");
          }
@@ -1058,7 +1115,7 @@ export default function Home() {
         // setTotalBeadCount(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [originalImageSrc, granularity, similarityThreshold, customPaletteSelections, pixelationMode, remapTrigger]);
+  }, [originalImageSrc, maxGridSize, similarityThreshold, customPaletteSelections, pixelationMode, remapTrigger]);
 
   // 确保文件输入框引用在组件挂载后正确设置
   useEffect(() => {
@@ -1495,7 +1552,6 @@ export default function Home() {
         if (cellData && !cellData.isExternal && cellData.key && cellData.key !== TRANSPARENT_KEY) {
           // 执行洪水填充擦除
           floodFillErase(j, i, cellData.key);
-          setIsEraseMode(false); // 擦除完成后退出擦除模式
           setTooltipData(null);
         }
         return;
@@ -1563,6 +1619,91 @@ export default function Home() {
         }
         
         // 上色操作后隐藏提示
+        setTooltipData(null);
+      }
+      // 自动取色模式：点击像素格自动转为相邻元素的颜色
+      else if (isClick && isManualColoringMode && isAutoPickMode) {
+        const currentCell = mappedPixelData[j][i];
+        if (!currentCell) {
+          return;
+        }
+        
+        const isCurrentTransparent = currentCell.isExternal || currentCell.key === TRANSPARENT_KEY;
+        
+        // 获取相邻像素的颜色
+        const adjacentColors: MappedPixel[] = [];
+        
+        // 上
+        if (j > 0) {
+          const upCell = mappedPixelData[j-1][i];
+          if (upCell && !upCell.isExternal && upCell.key !== TRANSPARENT_KEY) {
+            // 如果当前是无色的，任何相邻颜色都可取
+            // 如果当前有颜色，只有不同的颜色才可取
+            if (isCurrentTransparent || upCell.key !== currentCell.key) {
+              adjacentColors.push(upCell);
+            }
+          }
+        }
+        // 下
+        if (j < M-1) {
+          const downCell = mappedPixelData[j+1][i];
+          if (downCell && !downCell.isExternal && downCell.key !== TRANSPARENT_KEY) {
+            if (isCurrentTransparent || downCell.key !== currentCell.key) {
+              adjacentColors.push(downCell);
+            }
+          }
+        }
+        // 左
+        if (i > 0) {
+          const leftCell = mappedPixelData[j][i-1];
+          if (leftCell && !leftCell.isExternal && leftCell.key !== TRANSPARENT_KEY) {
+            if (isCurrentTransparent || leftCell.key !== currentCell.key) {
+              adjacentColors.push(leftCell);
+            }
+          }
+        }
+        // 右
+        if (i < N-1) {
+          const rightCell = mappedPixelData[j][i+1];
+          if (rightCell && !rightCell.isExternal && rightCell.key !== TRANSPARENT_KEY) {
+            if (isCurrentTransparent || rightCell.key !== currentCell.key) {
+              adjacentColors.push(rightCell);
+            }
+          }
+        }
+        
+        // 如果找到相邻颜色，随机选择一个进行替换
+        if (adjacentColors.length > 0) {
+          const newColor = adjacentColors[Math.floor(Math.random() * adjacentColors.length)];
+          
+          const newPixelData = mappedPixelData.map(row => row.map(cell => ({...cell})));
+          newPixelData[j][i] = { ...newColor, isExternal: false };
+          setMappedPixelData(newPixelData);
+          
+          // 更新颜色统计
+          if (colorCounts) {
+            const newColorCounts = { ...colorCounts };
+            const oldHex = currentCell.color.toUpperCase();
+            const newHex = newColor.color.toUpperCase();
+            
+            // 如果原来是有颜色的，减少旧颜色的计数
+            if (!isCurrentTransparent && newColorCounts[oldHex]) {
+              newColorCounts[oldHex].count--;
+              if (newColorCounts[oldHex].count <= 0) {
+                delete newColorCounts[oldHex];
+              }
+            }
+            
+            // 增加新颜色的计数
+            if (!newColorCounts[newHex]) {
+              newColorCounts[newHex] = { count: 0, color: newHex };
+            }
+            newColorCounts[newHex].count++;
+            
+            setColorCounts(newColorCounts);
+          }
+        }
+        
         setTooltipData(null);
       }
       // Tooltip Logic (非手动上色模式点击或悬停)
@@ -2123,22 +2264,22 @@ export default function Home() {
             {!isManualColoringMode && (
               /* 修改控制面板网格布局 */
               <div className="w-full md:max-w-2xl grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-xl shadow-md border border-gray-100 dark:border-gray-700">
-                {/* Granularity Input */}
+                {/* Max Grid Size Input */}
                 <div className="flex-1">
                   {/* Label color */}
-                  <label htmlFor="granularityInput" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
-                    横轴切割数量 (10-300):
+                  <label htmlFor="maxGridSizeInput" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 sm:mb-2">
+                    最大尺寸 (16-256):
                   </label>
                   <div className="flex items-center gap-2">
                     {/* Input field styles */}
                     <input
                       type="number"
-                      id="granularityInput"
-                      value={granularityInput}
-                      onChange={handleGranularityInputChange}
+                      id="maxGridSizeInput"
+                      value={maxGridSizeInput}
+                      onChange={handleMaxGridSizeInputChange}
                       className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 h-9 shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
-                      min="10"
-                      max="300"
+                      min="16"
+                      max="256"
                     />
                   </div>
                 </div>
@@ -2360,6 +2501,12 @@ export default function Home() {
             <h3 className="text-lg font-semibold mb-1 text-gray-700 dark:text-gray-200 text-center">
               去除杂色 
             </h3>
+            {/* 动态数据描述 */}
+            {gridDimensions && (
+              <p className="text-xs text-center text-gray-600 dark:text-gray-300 mb-2 font-medium">
+                网格: {gridDimensions.N}×{gridDimensions.M} | 使用颜色: {Object.keys(colorCounts).length}种 | 共需: {totalBeadCount}颗豆子
+              </p>
+            )}
             {/* Subtitle color */}
             <p className="text-xs text-center text-gray-500 dark:text-gray-400 mb-3">点击下方列表中的颜色可将其从可用列表中排除。总计: {totalBeadCount} 颗</p>
             <ul className="space-y-1 max-h-60 overflow-y-auto pr-2 text-sm">
@@ -2588,6 +2735,8 @@ export default function Home() {
           selectedColorSystem={selectedColorSystem}
           isEraseMode={isEraseMode}
           onEraseToggle={handleEraseToggle}
+          isAutoPickMode={isAutoPickMode}
+          onAutoPickToggle={handleAutoPickToggle}
           fullPaletteColors={fullPaletteColors}
           showFullPalette={showFullPalette}
           onToggleFullPalette={handleToggleFullPalette}

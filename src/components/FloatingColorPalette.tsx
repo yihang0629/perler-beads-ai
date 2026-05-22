@@ -13,6 +13,8 @@ interface FloatingColorPaletteProps {
   selectedColorSystem: ColorSystem;
   isEraseMode: boolean;
   onEraseToggle: () => void;
+  isAutoPickMode: boolean;
+  onAutoPickToggle: () => void;
   fullPaletteColors: { key: string; color: string }[];
   showFullPalette: boolean;
   onToggleFullPalette: () => void;
@@ -33,6 +35,8 @@ const FloatingColorPalette: React.FC<FloatingColorPaletteProps> = ({
   selectedColorSystem,
   isEraseMode,
   onEraseToggle,
+  isAutoPickMode,
+  onAutoPickToggle,
   fullPaletteColors,
   showFullPalette,
   onToggleFullPalette,
@@ -259,6 +263,21 @@ const FloatingColorPalette: React.FC<FloatingColorPaletteProps> = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               区域擦除
+            </button>
+
+            {/* 自动取色按钮 */}
+            <button
+              onClick={onAutoPickToggle}
+              className={`flex-1 p-2 rounded-lg border transition-all duration-200 flex items-center justify-center gap-1 text-xs ${
+                isAutoPickMode
+                  ? 'bg-green-500 text-white border-green-500'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-green-50 dark:hover:bg-green-900/20'
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+              </svg>
+              自动取色
             </button>
 
             {/* 颜色替换按钮 */}
