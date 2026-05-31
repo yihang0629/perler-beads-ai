@@ -22,6 +22,18 @@ https://github.com/liangdabiao/perler-beads-ai/tree/no-backend
 
 即梦 免费api （智能绘图）申请地址： https://console.volcengine.com/ai/ability/detail/1
 
+本地启动 即梦 免费api （智能绘图）：
+```
+1. 构建 Next.js 项目
+npm run build
+
+2. 启动 Cloudflare Pages 开发服务器
+npm run pages:dev
+
+npx wrangler pages dev out --compatibility-flag=nodejs_compat -b VOLC_ACCESS_KEY_ID=AKLTZWQ3NTA1YThiMmM5NDMyNmE0NDczMGZhN2U0ZDcxMTY -b VOLC_SECRET_ACCESS_KEY=TXpSa016QmxZamM1TldSaE5HRXpNV0pqWVdWaE16a3hNell5TW1NM00yRQ==
+```
+
+
 ### 免费小程序
 基于类似的功能，我已经完成一个不错的小程序，免费提供给大家使用。
 https://github.com/liangdabiao/perlerBeadsApplet
