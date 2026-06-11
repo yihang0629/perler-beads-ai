@@ -1,6 +1,6 @@
 // AI图片优化工具函数
 
-const DEFAULT_PROMPT = '图片修改为：chibi画风，背景白底。pixel art style, 16-bit, retro game aesthetic, sharp focus, high contrast, clean lines, detailed pixel art, masterpiece, best quality';
+const DEFAULT_PROMPT = '极简平涂Q版卡通，纯色块填充，无渐变、无阴影、无抗锯齿、粗黑轮廓，整体只用8-12种颜色，大块分区，没有细碎过渡色，扁平插画风格';
 
 export interface AIOptimizeOptions {
   customPrompt?: string;

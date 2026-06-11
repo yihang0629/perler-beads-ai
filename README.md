@@ -4,13 +4,49 @@
 
 特别感谢佬友支持： [linux.do](https://linux.do/t/topic/1660924/)
 
+# 启动项目
+
+第一种方式：
+仅开发前端（无 AI）：npm run dev
+npm run dev ==> next dev
+- Next.js 自带的开发服务器
+- 前端代码热更新 （修改代码立即生效）
+- 无法调用 AI 接口 ，因为 functions/ 中的 API 路由不会被加载
+- 适合：纯前端 UI/样式开发
+
+第二种方式：
+本地启动后端和前端，测试 AI 功能：
+
+本地预览命令
+先执行 npm run build
+
+后执行 
+如果配置了.dev.vars 文件：npm run pages:dev
+npm run pages:dev ==> npx wrangler pages dev out --compatibility-flag=nodejs_compat
+自动读取 .dev.vars 文件中的环境变量
+
+如果没有配置.dev.vars 文件：
+npx wrangler pages dev out --compatibility-flag=nodejs_compat 
+-b VOLC_ACCESS_KEY_ID=xxx 
+-b VOLC_SECRET_ACCESS_KEY=xxx
+
+- Wrangler 启动的 Cloudflare Pages 开发环境
+- 可以调用 AI 接口 ，因为 functions/api/* 会被加载
+- 前端代码修改后需要重新 build
+- 适合：测试完整的 AI 功能
+
+
+
 ### 部署方法：
 1，完全免费的，无需任何费用。利用了cloudflare page + 即梦 免费api
 2，部署方法简单，无需任何配置。 可以cloudflare命令一键部署，也可以基于github代码拉取部署，也可以自行手动部署。
 cloudflare命令一键部署命令参考：
 ```
-npm run pages:dev
+
+# 1. 构建项目（必须先执行）
 npm run build
+
+# 2. 部署到 Cloudflare
 npm run pages:deploy
 ```
 3，部署完成后，即可在浏览器中访问。可以cloudflare免费域名，也可以绑定自己域名。
@@ -27,10 +63,18 @@ https://github.com/liangdabiao/perler-beads-ai/tree/no-backend
 1. 构建 Next.js 项目
 npm run build
 
-2. 启动 Cloudflare Pages 开发服务器
+2. 或启动 Cloudflare Pages 开发服务器
 npm run pages:dev
+作用 ：启动 Cloudflare Pages 开发服务器，使用 Wrangler 加载 functions/ 中的 API 路由。
 
-npx wrangler pages dev out --compatibility-flag=nodejs_compat -b VOLC_ACCESS_KEY_ID=AKLTZWQ3NTA1YThiMmM5NDMyNmE0NDczMGZhN2U0ZDcxMTY -b VOLC_SECRET_ACCESS_KEY=TXpSa016QmxZamM1TldSaE5HRXpNV0pqWVdWaE16a3hNell5TW1NM00yRQ==
+2. 或启动 本地 开发服务器
+npx wrangler pages dev out --compatibility-flag=nodejs_compat 
+-b VOLC_ACCESS_KEY_ID=xxx 
+-b VOLC_SECRET_ACCESS_KEY=xxx
+
+npx wrangler pages dev out 启动本地开发服务器，托管 out 目录中的静态文件 --compatibility-flag=nodejs_compat 启用 Node.js 兼容模式，支持部分 Node.js API 
+-b VOLC_ACCESS_KEY_ID=xxx 绑定火山引擎访问密钥（环境变量） 
+-b VOLC_SECRET_ACCESS_KEY=xxx 绑定火山引擎密钥（环境变量）
 ```
 
 
