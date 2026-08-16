@@ -231,7 +231,7 @@ export async function downloadImage({
   
   // 加载二维码图片
   const qrCodeImage = new Image();
-  qrCodeImage.src = '/website_qrcode.png'; // 使用public目录中的图片
+  qrCodeImage.src = '/donation-qr.jpg'; // 使用public目录中的图片
   
   // 主要下载处理函数
   const processDownload = () => {
@@ -283,7 +283,7 @@ export async function downloadImage({
     const titleFontSize = Math.max(28, Math.floor(28 * titleBarScale)); // 最小28px，确保可读性
     
     // 计算二维码大小
-    const qrSize = Math.floor(titleBarHeight * 0.85); // 增大二维码比例
+    const qrSize = Math.floor(titleBarHeight * 0.9); // 增大二维码比例
     
     // 计算统计区域的大小
     if (includeStats && colorCounts) {
@@ -398,7 +398,7 @@ export async function downloadImage({
     const titleStartX = brandBlockWidth + titleBarHeight * 0.3;
     const mainTitleY = titleBarHeight * 0.4;
     
-    ctx.fillText('LDB', titleStartX, mainTitleY);
+    ctx.fillText('航海家', titleStartX, mainTitleY);
     
     // 5. 副标题 - 功能说明
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -421,20 +421,23 @@ export async function downloadImage({
     // 8. 二维码区域 - 重新设计
     const qrX = downloadWidth - qrSize - titleBarHeight * 0.15;
     const qrY = (titleBarHeight - qrSize) / 2;
-    
+
     // 二维码背景 - 圆角，更现代
     ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
-    ctx.roundRect(qrX, qrY, qrSize, qrSize, qrSize * 0.08);
+    ctx.roundRect(qrX, qrY, qrSize, qrSize, qrSize * 0.03);
     ctx.fill();
-    
+
     // 绘制二维码图片或占位符
     if (qrCodeImage.complete && qrCodeImage.naturalWidth !== 0) {
       // 使用裁剪区域绘制圆角二维码
       ctx.save();
       ctx.beginPath();
-      ctx.roundRect(qrX, qrY, qrSize, qrSize, qrSize * 0.08);
+      ctx.roundRect(qrX, qrY, qrSize, qrSize, qrSize * 0.03);
       ctx.clip();
+      // 开启平滑：高分辨率二维码缩放时双线性下采样，避免最近邻破坏定位图案导致无法扫描
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(qrCodeImage, qrX, qrY, qrSize, qrSize);
       ctx.restore();
     } else {
@@ -621,7 +624,7 @@ export async function downloadImage({
 
     // 副水印：放在网格左上角，简洁版本
     const secondaryWatermarkFontSize = Math.max(10, Math.floor(downloadCellSize * 0.5));
-    const secondaryText = '@LDB';
+    const secondaryText = '@航海家';
     
     ctx.font = `500 ${secondaryWatermarkFontSize}px system-ui, -apple-system, sans-serif`;
     const secondaryMetrics = ctx.measureText(secondaryText);
@@ -747,7 +750,7 @@ export async function downloadImage({
       
       // 统计区域水印 - 第三重保护，清晰明显
       const statsWatermarkFontSize = Math.max(10, Math.floor(statsFontSize * 0.7));
-      const statsWatermarkText = '图纸来源：小红书@LDB';
+      const statsWatermarkText = '图纸来源：航海家';
       
       ctx.font = `500 ${statsWatermarkFontSize}px system-ui, -apple-system, sans-serif`;
       const statsTextMetrics = ctx.measureText(statsWatermarkText);
